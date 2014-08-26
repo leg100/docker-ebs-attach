@@ -23,8 +23,9 @@ conn = boto.ec2.connect_to_region(args.region)
 
 instance = requests.get("http://169.254.169.254/latest/meta-data/instance-id").content
 
-print "Attaching volume {} to device {} on instance {}".format(args.volumeid, args.device, instance)
 conn.attach_volume(args.volumeid, instance, args.device) or sys.exit(1)
+print "Attached volume {} to device {} on instance {}".format(args.volumeid, args.device, instance)
+sys.stdout.flush()
 
 def detach_func(volume, instance, device):
     def handler(*args, **kwargs):
