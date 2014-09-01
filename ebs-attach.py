@@ -7,6 +7,7 @@ import sys
 import time
 
 import boto.ec2
+import boto.exception
 import requests
 
 # on close, detach ebs
@@ -19,19 +20,63 @@ parser.add_argument('--region', metavar='<REGION>', default=os.environ.get('REGI
                     help='AWS region')
 args = parser.parse_args()
 
-conn = boto.ec2.connect_to_region(args.region)
+# AWS metadata service that provides credentials is unreliable
+# so retry several times
+attempts = 0
+while True:
+    try:
+        print args.region
+        conn = boto.ec2.connect_to_region(args.region)
+    except boto.exception.NoAuthHandlerFound:
+        print "Couldn't find auth credentials handler, trying again"
+        sys.stdout.flush()
+
+        attempts += 1
+        if attempts > 5:
+            print "Tried 5 times, giving up"
+            sys.exit(3)
+        else:
+            time.sleep(1)
+    else:
+        break
 
 instance = requests.get("http://169.254.169.254/latest/meta-data/instance-id").content
 
-conn.attach_volume(args.volumeid, instance, args.device) or sys.exit(1)
-print "Attached volume {} to device {} on instance {}".format(args.volumeid, args.device, instance)
-sys.stdout.flush()
+existing_vols = conn.get_all_volumes([args.volumeid])
+if len(existing_vols) > 0:
+    vol = existing_vols[0]
+
+    if vol.attach_data.instance_id == instance:
+        print "Volume {} already attached to {}".format(args.volumeid, instance)
+        sys.stdout.flush()
+    else:
+        conn.attach_volume(args.volumeid, instance, args.device) or sys.exit(1)
+        print "Attached volume {} to device {} on instance {}".format(args.volumeid, args.device, instance)
+        sys.stdout.flush()
+else:
+    print "Cannot find volume {}".format(args.volumeid)
+    sys.exit(2)
 
 def detach_func(volume, instance, device):
     def handler(*args, **kwargs):
-        print "Detaching volume {} from device {} on instance {}".format(volume, device, instance)
-        conn.detach_volume(volume, instance, device)
-        sys.exit(0)
+        attempts = 0
+
+        while True:
+            try:
+                print "Detaching volume {} from device {} on instance {}".format(volume, device, instance)
+                conn.detach_volume(volume, instance, device)
+            except boto.exception.NoAuthHandlerFound:
+                print "Couldn't find auth credentials handler, trying again"
+                sys.stdout.flush()
+
+                attempts += 1
+                if attempts > 5:
+                    print "Tried 5 times, giving up"
+                    sys.exit(3)
+                else:
+                    time.sleep(1)
+            else:
+                sys.exit(0)
     return handler
 
 detach = detach_func(args.volumeid, instance, args.device)
