@@ -25,7 +25,6 @@ args = parser.parse_args()
 attempts = 0
 while True:
     try:
-        print args.region
         conn = boto.ec2.connect_to_region(args.region)
     except boto.exception.NoAuthHandlerFound:
         print "Couldn't find auth credentials handler, trying again"
@@ -75,7 +74,7 @@ def detach_func(volume, instance, device):
                     sys.exit(3)
                 else:
                     time.sleep(1)
-            else:
+           else:
                 sys.exit(0)
     return handler
 
