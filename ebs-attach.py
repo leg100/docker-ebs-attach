@@ -74,7 +74,7 @@ def detach_func(volume, instance, device):
                     sys.exit(3)
                 else:
                     time.sleep(1)
-           else:
+            else:
                 sys.exit(0)
     return handler
 
