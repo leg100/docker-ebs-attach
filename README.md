@@ -1,7 +1,7 @@
 docker-ebs-attach
 ==============
 
-Docker container that attaches an EBS volume to the local ec2 instance.
+Docker container that attaches an EBS volume to the local ec2 instance. Detaches volume on exit.
 
 Usage: 
 
