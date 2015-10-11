@@ -16,3 +16,4 @@ Note: it relies on the ec2 instance possessing an IAM profile with the following
 
  - ec2:AttachVolume
  - ec2:DetachVolume
+ - ec2:DescribeVolumes
